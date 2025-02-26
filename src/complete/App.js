@@ -5,7 +5,7 @@ import { NewTimer } from './NewTimer';
 import { Timer } from './Timer';
 import { Clock } from './Clock';
 import { timerAppMachine } from './timerAppMachine';
-import { inspect } from '@xstate/inspect';
+// import { inspect } from '@xstate/inspect';
 
 // inspect({
 //   iframe: false,

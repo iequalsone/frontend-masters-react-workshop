@@ -1,15 +1,25 @@
 import React, { useEffect, useReducer, useState } from 'react';
-import { createMachine } from 'xstate';
+import { createMachine, assign } from 'xstate';
 import { useMachine } from '@xstate/react';
 
 const initialState = 'pending';
 
-const alarmMachine = {
+const alarmMachine = createMachine({
   initial: 'inactive',
+  context: {
+    count: 0
+  },
   states: {
     inactive: {
       on: {
-        TOGGLE: 'pending',
+        TOGGLE: {
+          target: 'pending',
+          actions: assign({ 
+            count: (context, event) => {
+              return context.count + 1
+            } 
+          })
+        },
       },
     },
     pending: {
@@ -24,10 +34,10 @@ const alarmMachine = {
       },
     },
   },
-};
+});
 
 const alarmReducer = (state, event) => {
-  const nextState = alarmMachine.states[state].on[event.type] || state;
+  const nextState = alarmMachine.transition(state, event);
   return nextState;
   // switch (state) {
   //   case 'pending':
@@ -55,14 +65,16 @@ const alarmReducer = (state, event) => {
 
 export const ScratchApp = () => {
   // 'inactive', 'pending', 'active'
-  const [status, dispatch] = useReducer(alarmReducer, initialState);
+  const [state, send] = useMachine(alarmMachine);
+
+  const status = state.value; // 'pending', 'active', 'inactive
+  const { count } = state.context;
 
   useEffect(() => {
-    console.log(status);
     let timeout;
     if (status === 'pending') {
       timeout = setTimeout(() => {
-        dispatch({ type: 'SUCCESS' });
+        send('SUCCESS');
       }, 2000);
     }
 
@@ -78,15 +90,15 @@ export const ScratchApp = () => {
           {new Date().toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit',
-          })}
+          })}{' '}
+          ({count})
         </div>
         <div
           className='alarmToggle'
           data-active={status === 'active' || undefined}
           style={{ opacity: status === 'pending' ? 0.5 : 1 }}
           onClick={() => {
-            console.log('here');
-            dispatch({ type: 'TOGGLE' });
+            send('TOGGLE');
           }}
         ></div>
       </div>
