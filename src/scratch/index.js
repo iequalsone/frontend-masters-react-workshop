@@ -8,6 +8,10 @@ const incrementCount = assign({
   } 
 })
 
+const notTooMuch = (context, event) => {
+  return context.count < 5;
+}
+
 const alarmMachine = createMachine({
   initial: 'inactive',
   context: {
@@ -16,10 +20,15 @@ const alarmMachine = createMachine({
   states: {
     inactive: {
       on: {
-        TOGGLE: {
-          target: 'pending',
-          actions: 'incrementCount'
-        },
+        TOGGLE: [
+          {
+            target: 'pending',
+            actions: 'incrementCount',
+            cond: 'notTooMuch'
+          }, {
+            target: 'rejected'
+          }
+        ],
       },
     },
     pending: {
@@ -33,9 +42,11 @@ const alarmMachine = createMachine({
         TOGGLE: 'inactive',
       },
     },
+    rejected: {}
   },
 }, {
-  actions: [incrementCount]
+  actions: { incrementCount },
+  guards: { notTooMuch }
 });
 
 const alarmReducer = (state, event) => {
@@ -67,15 +78,7 @@ const alarmReducer = (state, event) => {
 
 export const ScratchApp = () => {
   // 'inactive', 'pending', 'active'
-  const [state, send] = useMachine(alarmMachine, {
-    actions: {
-      incrementCount: assign({
-        count: (ctx) => {
-          return ctx.count + 100
-        }
-      })
-    }
-  });
+  const [state, send] = useMachine(alarmMachine);
 
   const status = state.value; // 'pending', 'active', 'inactive
   const { count } = state.context;
@@ -101,7 +104,7 @@ export const ScratchApp = () => {
             hour: '2-digit',
             minute: '2-digit',
           })}{' '}
-          ({count})
+          ({count}) ({state.toStrings().join(' ')})
         </div>
         <div
           className='alarmToggle'
