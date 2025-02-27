@@ -1,5 +1,5 @@
 import React, { useEffect, useReducer, useState } from 'react';
-import { createMachine, assign } from 'xstate';
+import { createMachine, assign, send } from 'xstate';
 import { useMachine } from '@xstate/react';
 
 const incrementCount = assign({ 
@@ -28,6 +28,14 @@ const greetMachine = createMachine({
   }
 });
 
+const saveAlarm = async () => {
+  return new Promise(res => {
+    setTimeout(() => {
+      res();
+    }, 2000)
+  })
+}
+
 const alarmMachine = createMachine({
   initial: 'inactive',
   context: {
@@ -48,8 +56,12 @@ const alarmMachine = createMachine({
       },
     },
     pending: {
+      invoke: {
+        src: (ctx, e) => saveAlarm(),
+        onDone: 'active'
+      },
       on: {
-        SUCCESS: 'active',
+        // SUCCESS: 'active',
         TOGGLE: 'inactive',
       },
     },
@@ -99,18 +111,18 @@ export const ScratchApp = () => {
   const status = state.value; // 'pending', 'active', 'inactive
   const { count } = state.context;
 
-  useEffect(() => {
-    let timeout;
-    if (status === 'pending') {
-      timeout = setTimeout(() => {
-        send('SUCCESS');
-      }, 2000);
-    }
+  // useEffect(() => {
+  //   let timeout;
+  //   if (status === 'pending') {
+  //     timeout = setTimeout(() => {
+  //       send('SUCCESS');
+  //     }, 2000);
+  //   }
 
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [status]);
+  //   return () => {
+  //     clearTimeout(timeout);
+  //   };
+  // }, [status]);
 
   return (
     <div className='scratch'>
