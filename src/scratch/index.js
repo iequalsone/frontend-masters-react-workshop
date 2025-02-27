@@ -2,7 +2,11 @@ import React, { useEffect, useReducer, useState } from 'react';
 import { createMachine, assign } from 'xstate';
 import { useMachine } from '@xstate/react';
 
-const initialState = 'pending';
+const incrementCount = assign({ 
+  count: (ctx) => {
+    return ctx.count + 1
+  } 
+})
 
 const alarmMachine = createMachine({
   initial: 'inactive',
@@ -14,11 +18,7 @@ const alarmMachine = createMachine({
       on: {
         TOGGLE: {
           target: 'pending',
-          actions: assign({ 
-            count: (context, event) => {
-              return context.count + 1
-            } 
-          })
+          actions: 'incrementCount'
         },
       },
     },
@@ -34,6 +34,8 @@ const alarmMachine = createMachine({
       },
     },
   },
+}, {
+  actions: [incrementCount]
 });
 
 const alarmReducer = (state, event) => {
@@ -65,7 +67,15 @@ const alarmReducer = (state, event) => {
 
 export const ScratchApp = () => {
   // 'inactive', 'pending', 'active'
-  const [state, send] = useMachine(alarmMachine);
+  const [state, send] = useMachine(alarmMachine, {
+    actions: {
+      incrementCount: assign({
+        count: (ctx) => {
+          return ctx.count + 100
+        }
+      })
+    }
+  });
 
   const status = state.value; // 'pending', 'active', 'inactive
   const { count } = state.context;
