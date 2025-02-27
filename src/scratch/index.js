@@ -12,6 +12,22 @@ const notTooMuch = (context, event) => {
   return context.count < 5;
 }
 
+const greetMachine = createMachine({
+  initial: 'unknown',
+  states: {
+    unknown: {
+      always: [{
+        cond: () => {
+          return new Date().getHours() > 12
+        },
+        target: 'morning'
+      }, { target: 'day' }]
+    },
+    morning: {},
+    day: {}
+  }
+});
+
 const alarmMachine = createMachine({
   initial: 'inactive',
   context: {
@@ -77,7 +93,7 @@ const alarmReducer = (state, event) => {
 };
 
 export const ScratchApp = () => {
-  // 'inactive', 'pending', 'active'
+  const [greetState] = useMachine(greetMachine);
   const [state, send] = useMachine(alarmMachine);
 
   const status = state.value; // 'pending', 'active', 'inactive
@@ -98,6 +114,7 @@ export const ScratchApp = () => {
 
   return (
     <div className='scratch'>
+      <h2>Good {greetState.value === 'morning' ? 'morning!!' : 'day!'}</h2>
       <div className='alarm'>
         <div className='alarmTime'>
           {new Date().toLocaleTimeString('en-US', {
