@@ -29,9 +29,9 @@ const greetMachine = createMachine({
 });
 
 const saveAlarm = async () => {
-  return new Promise(res => {
+  return new Promise((res, rej) => {
     setTimeout(() => {
-      res();
+      res(100);
     }, 2000)
   })
 }
@@ -57,12 +57,30 @@ const alarmMachine = createMachine({
     },
     pending: {
       invoke: {
-        src: (ctx, e) => saveAlarm(),
-        onDone: 'active'
+        id: 'timeout',
+        src: (ctx, event) => (sendBack, receive) => {
+          receive(event => {
+            console.log(event);
+          });
+          
+          const timeout = setTimeout(() => {
+            sendBack({
+              type: 'SUCCESS'
+            })
+          }, 2000)
+
+          return () => {
+            console.log('cleaning up')
+            clearTimeout(timeout);
+          }
+        },
+        onError: { target: 'rejected' },
       },
       on: {
-        // SUCCESS: 'active',
-        TOGGLE: 'inactive',
+        SUCCESS: 'active',
+        TOGGLE: {
+          target: 'inactive',
+        }
       },
     },
     active: {
