@@ -1,6 +1,6 @@
 import React, { useEffect, useReducer, useState } from 'react';
-import { createMachine, assign, send } from 'xstate';
-import { useMachine } from '@xstate/react';
+import { createMachine, assign, spawn, sendParent } from 'xstate';
+import { useMachine, useService } from '@xstate/react';
 
 const incrementCount = assign({ 
   count: (ctx) => {
@@ -84,6 +84,7 @@ const alarmMachine = createMachine({
       },
     },
     active: {
+      entry: sendParent('ACTIVE'),
       on: {
         TOGGLE: 'inactive',
       },
@@ -98,70 +99,70 @@ const alarmMachine = createMachine({
 const alarmReducer = (state, event) => {
   const nextState = alarmMachine.transition(state, event);
   return nextState;
-  // switch (state) {
-  //   case 'pending':
-  //     if (event.type === 'SUCCESS') {
-  //       return 'active';
-  //     }
-  //     if (event.type === 'TOGGLE') {
-  //       return 'inactive';
-  //     }
-  //     return state;
-  //   case 'active':
-  //     if (event.type === 'TOGGLE') {
-  //       return 'inactive';
-  //     }
-  //     return state;
-  //   case 'inactive':
-  //     if (event.type === 'TOGGLE') {
-  //       return 'pending';
-  //     }
-  //     return state;
-  //   default:
-  //     return state;
-  // }
 };
 
-export const ScratchApp = () => {
-  const [greetState] = useMachine(greetMachine);
-  const [state, send] = useMachine(alarmMachine);
+const alarmsMachine = createMachine({
+  context: {
+    alarms: [],
+  },
+  initial: 'active',
+  states: {
+    active: {
+      on: {
+        ADD_ALARM: {
+          actions: assign({
+            alarms: (context, event) => {
+              const alarm = spawn(alarmMachine);
+              return context.alarms.concat(alarm);
+            }
+          })
+        },
+        ACTIVE: {
+          actions: (context, event) => {
+            console.log('received', event)
+          }
+        }
+      }
+    },
+  }
+})
 
-  const status = state.value; // 'pending', 'active', 'inactive
+const Alarm = ({ alarmRef }) => {
+  const [state, send] = useService(alarmRef);
+
+  const status = state.value;
   const { count } = state.context;
+  return (
+    <div className='alarm'>
+      <div className='alarmTime'>
+        {new Date().toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}{' '}
+        ({count}) ({state.toStrings().join(' ')})
+      </div>
+      <div
+        className='alarmToggle'
+        data-active={status === 'active' || undefined}
+        style={{ opacity: status === 'pending' ? 0.5 : 1 }}
+        onClick={() => {
+          send('TOGGLE');
+        }}
+      ></div>
+    </div>
+  )
+}
 
-  // useEffect(() => {
-  //   let timeout;
-  //   if (status === 'pending') {
-  //     timeout = setTimeout(() => {
-  //       send('SUCCESS');
-  //     }, 2000);
-  //   }
+export const ScratchApp = () => {
+  const [state, send] = useMachine(alarmsMachine);
 
-  //   return () => {
-  //     clearTimeout(timeout);
-  //   };
-  // }, [status]);
 
   return (
     <div className='scratch'>
-      <h2>Good {greetState.value === 'morning' ? 'morning!!' : 'day!'}</h2>
-      <div className='alarm'>
-        <div className='alarmTime'>
-          {new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}{' '}
-          ({count}) ({state.toStrings().join(' ')})
-        </div>
-        <div
-          className='alarmToggle'
-          data-active={status === 'active' || undefined}
-          style={{ opacity: status === 'pending' ? 0.5 : 1 }}
-          onClick={() => {
-            send('TOGGLE');
-          }}
-        ></div>
-      </div>
+      <button onClick={() => send('ADD_ALARM')}>All Alarm</button>
+      {state.context.alarms.map((alarm, i) => {
+        return <Alarm alarmRef={alarm} key={i} />
+      })}
     </div>
   );
 };
